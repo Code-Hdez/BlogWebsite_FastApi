@@ -8,6 +8,7 @@ from app.api.auth.router import router as auth_router
 from app.api.uploads.router import router as upload_router
 from app.api.tags.router import router as tag_router
 from app.api.categories.router import router as category_router
+from basico.app.core.middleware import register_middleware
 
 load_dotenv()
 
@@ -17,6 +18,7 @@ MEDIA_DIR = "app/media"
 def create_app() -> FastAPI:
     app = FastAPI(title="Mini Blog")
     Base.metadata.create_all(bind=engine)  # dev
+    register_middleware(app)
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(post_router)
     app.include_router(upload_router)
