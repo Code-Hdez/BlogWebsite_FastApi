@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 from basico.app.api.auth.repository import UserRepository
 from basico.app.core.db import get_db
-from basico.app.models.user import UserOrm
+from basico.app.models.user import UserORM
 from .schemas import RoleUpdate, TokenReponse, UserCreate, UserLogin, UserPublic
 from app.core.security import (
     auth2_token,
@@ -53,7 +53,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserPublic)
-def read_me(current: UserOrm = Depends(get_current_user)):
+def read_me(current: UserORM = Depends(get_current_user)):
     return UserPublic.model_validate(current)
 
 
@@ -62,7 +62,7 @@ def set_role(
     user_id: int = Path(..., ge=1),
     payload: RoleUpdate = None,
     db: Session = Depends(get_db),
-    _admin: UserOrm = Depends(require_admin),
+    _admin: UserORM = Depends(require_admin),
 ):
     repository = UserRepository(db)
     user = repository.get(user_id)

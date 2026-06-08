@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from basico.app.api.auth.repository import UserRepository
 from basico.app.core.db import get_db
-from basico.app.models.user import UserOrm
+from basico.app.models.user import UserORM
 
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -82,7 +82,7 @@ def decode_token(token: str) -> dict:
 
 def get_current_user(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
-) -> UserOrm:
+) -> UserORM:
 
     try:
         payload = decode_token(token)
@@ -100,7 +100,7 @@ def get_current_user(
     except PyJWTError:
         raise invalid_credentials()
 
-    user = db.get(UserOrm, user_id)
+    user = db.get(UserORM, user_id)
 
     if not user or not user.is_active:
         raise invalid_credentials()
@@ -120,7 +120,7 @@ def require_role(min_role: Literal["user", "editor", "admin"]):
 
     order = {"user": 0, "editor": 1, "admin": 2}
 
-    def evaluation(user: UserOrm = Depends(get_current_user)) -> UserOrm:
+    def evaluation(user: UserORM = Depends(get_current_user)) -> UserORM:
         if order[user.role] < order[min_role]:
             raise raise_forbidden
         return user

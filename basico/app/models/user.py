@@ -9,7 +9,7 @@ from basico.app.models.post import PostORM
 Role = Literal["user", "editor", "admin"]
 
 
-class UserOrm(Base):
+class UserORM(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     email: Mapped[str] = mapped_column(

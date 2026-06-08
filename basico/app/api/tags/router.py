@@ -11,7 +11,7 @@ from app.core.security import (
     require_editor,
     require_user,
 )
-from basico.app.models import user
+from basico.app.models import UserORM
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 
@@ -45,7 +45,7 @@ def list_tags(
 def create_tage(
     tag: TagCreate,
     db: Session = Depends(get_db),
-    _editor: user = Depends(require_editor),
+    _editor: UserORM = Depends(require_editor),
 ):
     repository = TagRepository(db)
 
@@ -64,7 +64,7 @@ def update_tag(
     tag_id: int,
     payload: TagUpdate,
     db: Session = Depends(get_db),
-    _editor: user = Depends(require_editor),
+    _editor: UserORM = Depends(require_editor),
 ):
     repository = TagRepository(db)
     tag = repository.update(tag_id, name=payload.name)
@@ -80,7 +80,7 @@ def update_tag(
 def delete_tag(
     tag_id: int,
     db: Session = Depends(get_db),
-    _admin: user = Depends(require_admin),
+    _admin: UserORM = Depends(require_admin),
 ):
     repository = TagRepository(db)
     delete = repository.delete(tag_id)
@@ -94,7 +94,7 @@ def delete_tag(
 
 @router.get("/popular/top")
 def get_most_popular_tag(
-    db: Session = Depends(get_db), _user: user = Depends(require_user)
+    db: Session = Depends(get_db), _user: UserORM = Depends(require_user)
 ):
     repository = TagRepository(db)
     row = repository.most_popular()
