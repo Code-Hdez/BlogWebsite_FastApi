@@ -11,6 +11,7 @@ from fastapi import (
 from math import ceil
 from typing import Optional, List, Union, Literal, Annotated
 from app.core.db import get_db
+from basico.app.api.auth import repository
 from .schemas import PostPublic, PostCreate, PaginatedPost, PostUpdate, PostSummary
 from .repository import PostRepository
 from sqlalchemy.orm import Session
@@ -212,3 +213,23 @@ def delete_post(
 @router.get("/secure")
 def secure_endpoint(token: str = Depends(oauth2_scheme)):
     return {"message": "Acceso con token", "token_recibido": token}
+
+
+@router.get("/post/{slug}", response_model=Union[PostPublic, PostSummary])
+def get_post_by_slug(
+    slug: str,
+    include_content: bool | None = Query(
+        default=True,
+        description="Booleano para indicar si se debe incluir el contenido del post en la respuesta",
+    ),
+    db: Session = Depends(get_db),
+):
+    repository = PostRepository(db)
+    post = repository.get_by_slug(slug)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post no encontrado")
+
+    if include_content:
+        return PostPublic.model_validate(post, from_attributes=True)
+
+    return PostSummary.model_validate(post, from_attributes=True)

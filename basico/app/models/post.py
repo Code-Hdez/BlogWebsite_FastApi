@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     UniqueConstraint,
     ForeignKey,
+    true,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -30,6 +31,7 @@ class PostORM(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    slug: Mapped[str] = mapped_column(String(150), unique=True, index=True)
     image_url = mapped_column(String(300), nullable=True)
     create_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
