@@ -1,0 +1,10 @@
+.idea/
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+blog.db
+.DS_Store
+basico/app/media/
