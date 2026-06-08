@@ -2,11 +2,20 @@ from time import perf_counter, time
 import uuid
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 BLACKLIST = {"0.0.0.0"}
 
 
 def register_middleware(app: FastAPI):
+
+    app.middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.middleware("http")
     async def add_process_time_header(request: Request, call_next):

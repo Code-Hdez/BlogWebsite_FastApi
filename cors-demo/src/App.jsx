@@ -8,6 +8,16 @@ function App() {
     setData(null);
     setError(null);
 
+    try {
+      const res = await fetch("http://127.0.0.1:8000/posts")
+      const json = await res.json()
+      setData(json)
+    }catch(err){
+      console.error(err)
+      setError("Error de CORS o Conexion. Revisar la consola del navegador")
+
+    }
+
   };
 
   return (
