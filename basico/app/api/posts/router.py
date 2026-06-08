@@ -149,6 +149,7 @@ def create_post(
             author=user,
             tags=[tag.model_dump() for tag in post.tags],
             image_url=image_url,
+            category_id=post.category_id,
         )
         db.commit()
         db.refresh(post)

@@ -1,8 +1,11 @@
 from math import ceil
+from fastapi import Depends
 from sqlalchemy.orm import Session, selectinload, joinedload
 from typing import Optional, List, Tuple
 from app.models import PostORM, TagORM, UserORM
 from sqlalchemy import select, func
+
+from basico.app.core.security import get_current_user
 
 
 class PostRepository:
@@ -56,7 +59,7 @@ class PostRepository:
 
         post_list = (
             select(PostORM)
-            .options(selectinload(PostORM.tags), joinedload(PostORM.author))
+            .options(selectinload(PostORM.tags), joinedload(PostORM.user))
             .where(PostORM.tags.any(func.lower(TagORM.name).in_(normalized_tag_names)))
         ).order_by(PostORM.id.asc())
 
@@ -67,13 +70,6 @@ class PostRepository:
         author_obj = self.db.execute(
             select(UserORM).where(UserORM.email == email)
         ).scalar_one_or_none()
-
-        if author_obj:
-            return author_obj
-
-        author_obj = UserORM(name=name, email=email)
-        self.db.add(author_obj)
-        self.db.flush()
 
         return author_obj
 
@@ -102,17 +98,22 @@ class PostRepository:
         self,
         title: str,
         content: str,
-        author: Optional[dict],
         tags: List[dict],
         image_url: str,
+        category_id: Optional[int],
+        author: UserORM = Depends(get_current_user),
     ) -> PostORM:
 
         author_obj = None
         if author:
-            author_obj = self.ensure_author(author["username"], author["email"])
+            author_obj = self.ensure_author(author.full_name, author.email)
 
         post = PostORM(
-            title=title, content=content, author=author_obj, image_url=image_url
+            title=title,
+            content=content,
+            user=author_obj,
+            image_url=image_url,
+            category_id=category_id,
         )
 
         names = tags[0]["name"].split(",")
