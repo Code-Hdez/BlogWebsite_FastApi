@@ -1,7 +1,7 @@
 from math import ceil
 from sqlalchemy.orm import Session, selectinload, joinedload
 from typing import Optional, List, Tuple
-from app.models import PostORM, AuthorORM, TagORM
+from app.models import PostORM, TagORM, UserORM
 from sqlalchemy import select, func
 
 
@@ -62,16 +62,16 @@ class PostRepository:
 
         return self.db.execute(post_list).scalars().all()
 
-    def ensure_author(self, name: str, email: str) -> AuthorORM:
+    def ensure_author(self, name: str, email: str) -> UserORM:
 
         author_obj = self.db.execute(
-            select(AuthorORM).where(AuthorORM.email == email)
+            select(UserORM).where(UserORM.email == email)
         ).scalar_one_or_none()
 
         if author_obj:
             return author_obj
 
-        author_obj = AuthorORM(name=name, email=email)
+        author_obj = UserORM(name=name, email=email)
         self.db.add(author_obj)
         self.db.flush()
 
