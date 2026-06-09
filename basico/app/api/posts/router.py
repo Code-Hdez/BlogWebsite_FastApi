@@ -11,29 +11,14 @@ from fastapi import (
 from math import ceil
 from typing import Optional, List, Union, Literal, Annotated
 from app.core.db import get_db
-from basico.app.api.auth import repository
 from .schemas import PostPublic, PostCreate, PaginatedPost, PostUpdate, PostSummary
 from .repository import PostRepository
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from app.core.security import oauth2_scheme, get_current_user
+from app.core.security import get_current_user
 from app.services.file_storage import save_upload_file
-import time
-import asyncio
 
 router = APIRouter(prefix="/posts", tags=["posts"])
-
-
-@router.get("/sync")
-def sync_endpoint():
-    time.sleep(8)
-    return {"meesage": "Funcion sincrona terminó"}
-
-
-@router.get("/async")
-async def async_endpoint():
-    await asyncio.sleep(8)
-    return {"meesage": "Funcion asincrona terminó"}
 
 
 @router.get("", response_model=PaginatedPost)
@@ -63,7 +48,7 @@ def list_posts(
     total, items = repository.search(query, order_by, direction, page, per_page)
 
     total_pages = ceil(total / per_page) if total > 0 else 0
-    current_page = 2 if total_pages == 0 else min(page, total_pages)
+    current_page = 1 if total_pages == 0 else min(page, total_pages)
 
     has_prev = current_page > 1
     has_next = current_page < total_pages
@@ -102,7 +87,7 @@ def get_post(
         ge=1,
         title="ID del post",
         description="Identificador entero del post (debe de ser mayor a 1)",
-        example=1,
+        examples=[1],
     ),
     include_content: bool | None = Query(
         default=True,
@@ -165,7 +150,7 @@ def create_post(
 
 
 @router.put(
-    "/{posts_id}",
+    "/{post_id}",
     response_model=PostPublic,
     response_description="Post actualizado",
     response_model_exclude_none=True,
@@ -187,6 +172,7 @@ def update_post(
         post = repository.update_post(post, update)
         db.commit()
         db.refresh(post)
+        return post
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Error al actualizar el post")
@@ -208,11 +194,6 @@ def delete_post(
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="Error al eliminar el post")
-
-
-@router.get("/secure")
-def secure_endpoint(token: str = Depends(oauth2_scheme)):
-    return {"message": "Acceso con token", "token_recibido": token}
 
 
 @router.get("/post/{slug}", response_model=Union[PostPublic, PostSummary])

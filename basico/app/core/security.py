@@ -1,21 +1,23 @@
-from enum import verify
-from venv import create
-
+import base64
+import binascii
+import hashlib
+import hmac
+import secrets
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta, datetime, timezone
 from typing import Literal, Optional
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError, PyJWTError
 import jwt
-from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from basico.app.api.auth.repository import UserRepository
-from basico.app.core.db import get_db
-from basico.app.models.user import UserORM
+from app.api.auth.repository import UserRepository
+from app.core.db import get_db
+from app.models.user import UserORM
 
-password_hash = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+PASSWORD_ALGORITHM = "sha256"
+PASSWORD_ITERATIONS = 390_000
 
 credentials_exc = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -45,19 +47,6 @@ def invalid_credentials():
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Credenciales invalidas",
     )
-
-
-# def create_access_token(data: dict, expires_delta: Optional[timedelta]):
-#     to_encode = data.copy()
-#     expire = datetime.now(tz=timezone.utc) + (
-#         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-#     )
-#     to_encode.update({"exp": expire})
-#     token = jwt.encode(
-#         payload=to_encode, key=settings.JWT_KEY, algorithm=settings.JWT_ALGORITHM
-#     )
-
-#     return token
 
 
 def create_access_token(sub: str, minutes: int | None = None) -> str:
@@ -97,6 +86,8 @@ def get_current_user(
         raise raise_expire_token()
     except InvalidTokenError:
         raise credentials_exc
+    except ValueError:
+        raise credentials_exc
     except PyJWTError:
         raise invalid_credentials()
 
@@ -108,12 +99,45 @@ def get_current_user(
     return user
 
 
+def _encode_bytes(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _decode_bytes(data: str) -> bytes:
+    padding = "=" * (-len(data) % 4)
+    return base64.urlsafe_b64decode(data + padding)
+
+
 def hash_password(plain: str) -> str:
-    return password_hash.hash(plain)
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        PASSWORD_ALGORITHM,
+        plain.encode("utf-8"),
+        salt,
+        PASSWORD_ITERATIONS,
+    )
+    return (
+        f"pbkdf2_{PASSWORD_ALGORITHM}"
+        f"${PASSWORD_ITERATIONS}${_encode_bytes(salt)}${_encode_bytes(digest)}"
+    )
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return password_hash.verify(plain, hashed)
+    try:
+        method, iterations, salt, digest = hashed.split("$", 3)
+        algorithm = method.removeprefix("pbkdf2_")
+        if algorithm != PASSWORD_ALGORITHM:
+            return False
+
+        expected = hashlib.pbkdf2_hmac(
+            algorithm,
+            plain.encode("utf-8"),
+            _decode_bytes(salt),
+            int(iterations),
+        )
+        return hmac.compare_digest(_encode_bytes(expected), digest)
+    except (binascii.Error, ValueError, TypeError):
+        return False
 
 
 def require_role(min_role: Literal["user", "editor", "admin"]):
@@ -122,7 +146,7 @@ def require_role(min_role: Literal["user", "editor", "admin"]):
 
     def evaluation(user: UserORM = Depends(get_current_user)) -> UserORM:
         if order[user.role] < order[min_role]:
-            raise raise_forbidden
+            raise raise_forbidden()
         return user
 
     return evaluation

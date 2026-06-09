@@ -24,7 +24,7 @@ def paginate_query(
     page, per_page = sanitize_pagination(page, per_page)
     query = base_query if base_query is not None else select(model)
 
-    total = db.scalar(select(func.count()).select_from(model)) or 0
+    total = db.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
 
     if total == 0:
         return {"total": 0, "pages": 0, "page": page, "per_page": per_page, "items": []}

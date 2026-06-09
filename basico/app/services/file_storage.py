@@ -1,16 +1,18 @@
 import os
 import shutil
 import uuid
-from fastapi import APIRouter, File, UploadFile, HTTPException, status
+from pathlib import Path
 
-MEDIA_DIR = "app/media"
+from fastapi import UploadFile, HTTPException, status
+
+MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
 ALLOW_MIME = ["image/png", "image/jpeg"]
 MAX_MB = int(os.getenv("MAX_UPLOAD_MB", "10"))
-CHUNKS = 1024 * 1024
+CHUNK_SIZE = 1024 * 1024
 
 
 def ensure_media_dir() -> None:
-    os.makedirs(MEDIA_DIR, exist_ok=True)
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def save_upload_file(file: UploadFile) -> dict:
@@ -21,9 +23,9 @@ def save_upload_file(file: UploadFile) -> dict:
         )
 
     ensure_media_dir()
-    ext = os.path.split(file.filename)[1]
+    ext = Path(file.filename or "").suffix
     filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(MEDIA_DIR, filename)
+    file_path = MEDIA_DIR / filename
 
     class _ChunkCounter:
         def __init__(self, f):
@@ -43,12 +45,12 @@ def save_upload_file(file: UploadFile) -> dict:
 
     reader = _ChunkCounter(file.file)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(reader, buffer, length=CHUNKS)
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(reader, buffer, length=CHUNK_SIZE)
 
-    size = os.path.getsize(file_path)
-    if size > MAX_MB * CHUNKS:
-        os.remove(file_path)
+    size = file_path.stat().st_size
+    if size > MAX_MB * CHUNK_SIZE:
+        file_path.unlink()
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"Archivo demasiado grande(>{MAX_MB} MB)",
@@ -57,9 +59,9 @@ def save_upload_file(file: UploadFile) -> dict:
     return {
         "filename": filename,
         "content_type": file.content_type,
-        "url": f"media/{filename}",
+        "url": f"/media/{filename}",
         "size": size,
-        "chunk_size_used": CHUNKS,
+        "chunk_size_used": CHUNK_SIZE,
         "chunk_calls": reader.calls,
         "chunk_size_sample": reader.sizes[:5],
     }

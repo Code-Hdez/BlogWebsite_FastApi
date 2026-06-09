@@ -1,10 +1,9 @@
-from pydantic import BaseModel, Field, field_validator, EmailStr, ConfigDict
-from typing import Optional, List, Union, Literal, Annotated
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import Optional, List, Literal, Annotated
 from fastapi import Form
 
-from basico.app.api.auth.schemas import UserPublic
-from basico.app.api.categories.schemas import CategoryPublic
-from basico.app.models.tag import Tag
+from app.api.auth.schemas import UserPublic
+from app.api.categories.schemas import CategoryPublic
 
 
 class Tag(BaseModel):
@@ -20,14 +19,6 @@ class PostBase(BaseModel):
     user: Optional[UserPublic] = None
     image_url: Optional[str] = None
     category: Optional[CategoryPublic] = None
-    # content: Optional[str] = "Se debe de rellenar este campo con el contenido"
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class Author(BaseModel):
-    name: str
-    email: EmailStr
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -61,11 +52,18 @@ class PostCreate(PostBase):
         cls,
         title: Annotated[str, Form(min_length=3)],
         content: Annotated[str, Form(min_length=10)],
-        category_id: Annotated[int, Form(ge=1)],
+        category_id: Annotated[Optional[int], Form(ge=1)] = None,
         tags: Annotated[Optional[List[str]], Form()] = None,
     ):
-        tag_objs = [Tag(name=t) for t in (tags or [])]
-        return cls(title=title, content=content, tag=tag_objs, category_id=category_id)
+        tag_objs = []
+        for value in tags or []:
+            tag_objs.extend(
+                Tag(name=name.strip().lower())
+                for name in value.split(",")
+                if name.strip()
+            )
+
+        return cls(title=title, content=content, tags=tag_objs, category_id=category_id)
 
 
 class PostUpdate(BaseModel):

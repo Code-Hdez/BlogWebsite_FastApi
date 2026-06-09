@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.tags.schemas import TagPublic
 from app.models.tag import TagORM
 from app.services.pagination import paginate_query
-from basico.app.models.post import PostORM, post_tags
+from app.models.post import PostORM, post_tags
 
 
 class TagRepository:
@@ -65,7 +65,7 @@ class TagRepository:
         return tag_obj
 
     def update(self, tag_id: int, name: str) -> Optional[TagORM]:
-        tag = self.db.get(tag_id)
+        tag = self.db.get(TagORM, tag_id)
         if not tag:
             return None
 
@@ -79,7 +79,7 @@ class TagRepository:
         return tag
 
     def delete(self, tag_id: int) -> bool:
-        tag = self.db.get(tag_id)
+        tag = self.db.get(TagORM, tag_id)
 
         if not tag:
             return False
@@ -88,7 +88,7 @@ class TagRepository:
 
         return True
 
-    def most_popular(self, tag_id: int) -> dict | None:
+    def most_popular(self) -> dict | None:
 
         row = (
             self.db.execute(
@@ -97,7 +97,7 @@ class TagRepository:
                     TagORM.name.label("name"),
                     func.count(PostORM.id).label("uses"),
                 )
-                .join(post_tags, post_tags.c.id == TagORM.id)
+                .join(post_tags, post_tags.c.tag_id == TagORM.id)
                 .join(PostORM, PostORM.id == post_tags.c.post_id)
                 .group_by(TagORM.id, TagORM.name)
                 .order_by(func.count(PostORM.id).desc(), func.lower(TagORM.name).asc())

@@ -1,13 +1,11 @@
-from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from basico.app.core.db import get_db
-from basico.app.models.user import UserORM
+from app.models.user import UserORM
 
 
 class UserRepository:
-    def __init__(self, db: Session = Depends(get_db)):
+    def __init__(self, db: Session):
         self.db = db
 
     def get(self, user_id: int) -> UserORM | None:
@@ -15,13 +13,13 @@ class UserRepository:
 
     def get_by_email(self, email: str) -> UserORM | None:
         query = select(UserORM).where(UserORM.email == email)
-        return self.db.execute(query).scalar_one_or_none
+        return self.db.execute(query).scalar_one_or_none()
 
     def create(
-        self, email: str, hashsed_password: str, full_name: str | None
+        self, email: str, hashed_password: str, full_name: str | None
     ) -> UserORM:
         user = UserORM(
-            email=email, hashsed_password=hashsed_password, full_name=full_name
+            email=email, hashed_password=hashed_password, full_name=full_name
         )
         self.db.add(user)
         self.db.flush()

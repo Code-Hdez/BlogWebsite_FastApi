@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from typing import Iterable, Sequence
-from collections.abc import Iterable as IterableABC
-from unicodedata import category
+from typing import Sequence
 
-from sqlalchemy import select, func
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.category import CategoryORM
@@ -16,13 +13,8 @@ class CategoryRepository:
         self.db = db
 
     def list_many(self, *, skip: int = 0, limit: int = 50) -> Sequence[CategoryORM]:
-        query = select(CategoryORM).offset(skip).limit(limit)
+        query = select(CategoryORM).order_by(CategoryORM.id.asc()).offset(skip).limit(limit)
         return self.db.execute(query).scalars().all()
-
-    def list_with_total(
-        self, *, page: int = 1, per_page: int = 50
-    ) -> tuple[int, list[CategoryORM]]:
-        pass
 
     def get(self, category_id: int) -> CategoryORM | None:
         return self.db.get(CategoryORM, category_id)

@@ -1,12 +1,10 @@
 from math import ceil
-from fastapi import Depends
 from sqlalchemy.orm import Session, selectinload, joinedload
-from typing import Optional, List, Tuple
+from typing import Optional, List
 from app.models import PostORM, TagORM, UserORM
 from sqlalchemy import select, func
 
-from basico.app.core.security import get_current_user
-from basico.app.utils.slugify_utils import ensure_unique_slug, slugify_base
+from app.utils.slugify_utils import ensure_unique_slug
 
 
 class PostRepository:
@@ -14,11 +12,27 @@ class PostRepository:
         self.db = db
 
     def get(self, post_id: int) -> Optional[PostORM]:
-        post_find = select(PostORM).where(PostORM.id == post_id)
+        post_find = (
+            select(PostORM)
+            .options(
+                selectinload(PostORM.tags),
+                joinedload(PostORM.user),
+                joinedload(PostORM.category),
+            )
+            .where(PostORM.id == post_id)
+        )
         return self.db.execute(post_find).scalar_one_or_none()
 
     def get_by_slug(self, slug: str) -> Optional[PostORM]:
-        query = select(PostORM).where(PostORM.slug == slug)
+        query = (
+            select(PostORM)
+            .options(
+                selectinload(PostORM.tags),
+                joinedload(PostORM.user),
+                joinedload(PostORM.category),
+            )
+            .where(PostORM.slug == slug)
+        )
         return self.db.execute(query).scalar_one_or_none()
 
     def search(
@@ -30,7 +44,11 @@ class PostRepository:
         per_page: int,
     ) -> tuple[int, List[PostORM]]:
 
-        results = select(PostORM)
+        results = select(PostORM).options(
+            selectinload(PostORM.tags),
+            joinedload(PostORM.user),
+            joinedload(PostORM.category),
+        )
 
         if query:
             results = results.where(PostORM.title.ilike(f"{query}%"))
@@ -57,34 +75,26 @@ class PostRepository:
 
     def by_tags(self, tag_names: List[str]) -> List[PostORM]:
 
-        normalized_tag_names = [tag.strip() for tag in tag_names if tag.strip()]
+        normalized_tag_names = [tag.strip().lower() for tag in tag_names if tag.strip()]
 
         if not normalized_tag_names:
             return []
 
         post_list = (
             select(PostORM)
-            .options(selectinload(PostORM.tags), joinedload(PostORM.user))
+            .options(
+                selectinload(PostORM.tags),
+                joinedload(PostORM.user),
+                joinedload(PostORM.category),
+            )
             .where(PostORM.tags.any(func.lower(TagORM.name).in_(normalized_tag_names)))
         ).order_by(PostORM.id.asc())
 
         return self.db.execute(post_list).scalars().all()
 
-    def ensure_author(self, name: str, email: str) -> UserORM:
-
-        author_obj = self.db.execute(
-            select(UserORM).where(UserORM.email == email)
-        ).scalar_one_or_none()
-
-        return author_obj
-
     def ensure_tags(self, name: str) -> TagORM:
 
         normalize = name.strip().lower()
-
-        # tag_obj = self.db.execute(
-        #     select(TagORM).where(func.lower(TagORM.name) == name.lower())
-        # ).scalar_one_or_none()
 
         tag_obj = self.db.execute(
             select(TagORM).where(func.lower(TagORM.name) == normalize)
@@ -93,7 +103,7 @@ class PostRepository:
         if tag_obj:
             return tag_obj
 
-        tag_obj = TagORM(name=name)
+        tag_obj = TagORM(name=normalize)
         self.db.add(tag_obj)
         self.db.flush()
 
@@ -104,14 +114,10 @@ class PostRepository:
         title: str,
         content: str,
         tags: List[dict],
-        image_url: str,
+        image_url: Optional[str],
         category_id: Optional[int],
-        author: UserORM = Depends(get_current_user),
+        author: Optional[UserORM],
     ) -> PostORM:
-
-        author_obj = None
-        if author:
-            author_obj = self.ensure_author(author.full_name, author.email)
 
         unique_slug = ensure_unique_slug(self.db, title)
 
@@ -119,14 +125,13 @@ class PostRepository:
             title=title,
             slug=unique_slug,
             content=content,
-            user=author_obj,
+            user=author,
             image_url=image_url,
             category_id=category_id,
         )
 
-        names = tags[0]["name"].split(",")
-        for name in names:
-            name = names.strip().lower()
+        for tag in tags:
+            name = tag["name"].strip().lower()
             if not name:
                 continue
             tag_obj = self.ensure_tags(name)
@@ -144,6 +149,7 @@ class PostRepository:
             setattr(post, key, value)
 
         self.db.add(post)
+        self.db.flush()
         self.db.refresh(post)
 
         return post

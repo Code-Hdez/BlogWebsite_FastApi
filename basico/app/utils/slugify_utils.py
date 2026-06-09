@@ -1,12 +1,16 @@
-from slugify import slugify as _slugify
+import re
+import unicodedata
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from basico.app.models.post import PostORM
+from app.models.post import PostORM
 
 
 def slugify_base(text: str) -> str:
-    slug = _slugify(text, lowercase=True, separator="-")
+    normalized = unicodedata.normalize("NFKD", text)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", ascii_text).strip("-").lower()
     return slug or "post"
 
 
@@ -18,7 +22,7 @@ def ensure_unique_slug(db: Session, base_text: str) -> str:
         .all()
     )
 
-    if base is not existing:
+    if base not in existing:
         return base
 
     i = 2

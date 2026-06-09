@@ -12,11 +12,12 @@ from .associations import post_tags
 if TYPE_CHECKING:
     from .post import PostORM
 
+
 class TagORM(Base):
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(30), unique=False, index=True)
+    name: Mapped[str] = mapped_column(String(30), unique=True, index=True)
 
     posts: Mapped[List[PostORM]] = relationship(
         secondary=post_tags,

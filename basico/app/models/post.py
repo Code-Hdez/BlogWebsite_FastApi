@@ -8,7 +8,6 @@ from sqlalchemy import (
     DateTime,
     UniqueConstraint,
     ForeignKey,
-    true,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -32,16 +31,16 @@ class PostORM(Base):
     title: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     slug: Mapped[str] = mapped_column(String(150), unique=True, index=True)
-    image_url = mapped_column(String(300), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     create_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     user: Mapped[Optional[UserORM]] = relationship(back_populates="posts")
 
-    catrgory_id: Mapped[Optional[int]] = mapped_column(
+    category_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    category = relationship("CategoryORM", back_populates="posts")
+    category: Mapped[Optional[CategoryORM]] = relationship(back_populates="posts")
 
     tags: Mapped[List[TagORM]] = relationship(
         secondary=post_tags,

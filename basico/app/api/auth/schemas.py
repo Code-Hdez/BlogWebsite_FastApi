@@ -28,7 +28,7 @@ class UserLogin(BaseModel):
     password: str
 
 
-class TokenReponse(BaseModel):
+class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserPublic
@@ -36,8 +36,3 @@ class TokenReponse(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: Role
-
-
-class Token_data(BaseModel):
-    sub: str
-    username: str

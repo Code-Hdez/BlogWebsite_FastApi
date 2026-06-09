@@ -6,12 +6,11 @@ from app.api.tags.repository import TagRepository
 from app.api.tags.schemas import TagCreate, TagPublic, TagUpdate
 from app.core.db import get_db
 from app.core.security import (
-    get_current_user,
     require_admin,
     require_editor,
     require_user,
 )
-from basico.app.models import UserORM
+from app.models import UserORM
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 
@@ -39,10 +38,10 @@ def list_tags(
 @router.post(
     "",
     response_model=TagPublic,
-    response_description="Post Creado (OK)",
+    response_description="Tag creado (OK)",
     status_code=status.HTTP_201_CREATED,
 )
-def create_tage(
+def create_tag(
     tag: TagCreate,
     db: Session = Depends(get_db),
     _editor: UserORM = Depends(require_editor),

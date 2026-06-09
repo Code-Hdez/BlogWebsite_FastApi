@@ -1,10 +1,9 @@
-import detect_installer
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
-from basico.app.api.auth.repository import UserRepository
-from basico.app.core.db import get_db
-from basico.app.models.user import UserORM
-from .schemas import RoleUpdate, TokenReponse, UserCreate, UserLogin, UserPublic
+from app.api.auth.repository import UserRepository
+from app.core.db import get_db
+from app.models.user import UserORM
+from .schemas import RoleUpdate, TokenResponse, UserCreate, UserLogin, UserPublic
 from app.core.security import (
     auth2_token,
     create_access_token,
@@ -23,11 +22,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(payload: UserCreate, db: Session = Depends(get_db)):
     repository = UserRepository(db)
     if repository.get_by_email(payload.email):
-        raise HTTPException(status_code=404, detail="Email ya registrado")
+        raise HTTPException(status_code=409, detail="Email ya registrado")
 
     user = repository.create(
         email=payload.email,
-        hashsed_password=hash_password(payload.password),
+        hashed_password=hash_password(payload.password),
         full_name=payload.full_name,
     )
 
@@ -37,7 +36,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     return UserPublic.model_validate(user)
 
 
-@router.post("/login", response_model=TokenReponse)
+@router.post("/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
 
     repository = UserRepository(db)
@@ -49,7 +48,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         )
     token = create_access_token(sub=str(user.id))
 
-    return TokenReponse(access_token=token, user=UserPublic.model_validate(user))
+    return TokenResponse(access_token=token, user=UserPublic.model_validate(user))
 
 
 @router.get("/me", response_model=UserPublic)
@@ -59,8 +58,8 @@ def read_me(current: UserORM = Depends(get_current_user)):
 
 @router.put("/role/{user_id}", response_model=UserPublic)
 def set_role(
+    payload: RoleUpdate,
     user_id: int = Path(..., ge=1),
-    payload: RoleUpdate = None,
     db: Session = Depends(get_db),
     _admin: UserORM = Depends(require_admin),
 ):
@@ -78,5 +77,5 @@ def set_role(
 
 
 @router.post("/token")
-async def token_endpoint(responde=Depends(auth2_token)):
-    return responde
+async def token_endpoint(response=Depends(auth2_token)):
+    return response

@@ -1,6 +1,6 @@
 import typer
 
-from basico.app.seeds.service import run_all, run_categories, run_tags, run_users
+from app.seeds.service import run_all, run_categories, run_tags, run_users
 
 app = typer.Typer(help="Seeds: users, categories, tags")
 
@@ -17,11 +17,13 @@ def users():
     typer.echo("Usuarios Cargados")
 
 
+@app.command("categories")
 def categories():
     run_categories()
     typer.echo("Categorias Cargadas")
 
 
+@app.command("tags")
 def tags():
     run_tags()
     typer.echo("Etiquetas Cargadas")
